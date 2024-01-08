@@ -1,0 +1,71 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+name: ci
+
+jobs:
+  fmt-clippy:
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [ubuntu-20.04]
+        feature: [default]
+        include:
+          - feature: default
+            flags: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.6.0
+        with:
+          rustflags: ""
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace ${{ matrix.flags }}
+
+      - name: Clippy of tests
+        run: cargo clippy --tests --workspace ${{ matrix.flags }}
+
+  tests:
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [ubuntu-20.04]
+        feature: [default]
+        include:
+          - feature: default
+            flags: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.6.0
+        with:
+          rustflags: ""
+
+      - name: Tests
+        run: cargo test --workspace --profile ci ${{ matrix.flags }}
+
+      - name: Check for clean repo
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "there are changes";
+            git status --porcelain
+            exit 1
+          else
+            echo "no changes in working directory";
+          fi
